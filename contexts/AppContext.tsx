@@ -1,5 +1,6 @@
 'use client';
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
 
 // ===== TYPES =====
 export type Product = {
@@ -33,58 +34,10 @@ export type CashEntry = {
   type: 'Masuk' | 'Keluar'; cat: string; amount: number; ref: string;
 };
 
-// ===== INITIAL DATA =====
-const initProducts: Product[] = [
-  { id: 'VS-001', name: 'Kampas Rem Depan', category: 'Rem', stock: 24, min: 10, buy: 85000, sell: 120000, img: '' },
-  { id: 'VS-002', name: 'Oli Agip 4T 1 Liter', category: 'Oli', stock: 3, min: 10, buy: 65000, sell: 90000, img: '' },
-  { id: 'VS-003', name: 'Ban Dalam 275-17', category: 'Ban', stock: 18, min: 5, buy: 45000, sell: 65000, img: '' },
-  { id: 'VS-004', name: 'Kampas Rem Belakang', category: 'Rem', stock: 30, min: 10, buy: 75000, sell: 110000, img: '' },
-  { id: 'VS-005', name: 'Busi NGK CR7HSA', category: 'Elektrikal', stock: 2, min: 10, buy: 35000, sell: 55000, img: '' },
-  { id: 'VS-006', name: 'Filter Udara', category: 'Filter', stock: 12, min: 5, buy: 40000, sell: 65000, img: '' },
-  { id: 'VS-007', name: 'Rantai Motor 428H', category: 'Transmisi', stock: 8, min: 5, buy: 95000, sell: 145000, img: '' },
-  { id: 'VS-008', name: 'Minyak Rem DOT4', category: 'Rem', stock: 15, min: 8, buy: 28000, sell: 45000, img: '' },
-  { id: 'VS-009', name: 'Bearing Roda Depan', category: 'Bearing', stock: 0, min: 5, buy: 55000, sell: 85000, img: '' },
-];
-
-const initCustomers: Customer[] = [
-  { id: 'PLG-001', name: 'Rafi Maulana', phone: '0812-3456-7890', address: 'Jl. Sentani Kota No.12', totalBeli: 3250000, piutang: 350000, lastTrx: '27 Jun 2026' },
-  { id: 'PLG-002', name: 'Dian Kusuma', phone: '0813-5678-9012', address: 'Jl. Kemiri No.8, Sentani', totalBeli: 1850000, piutang: 275000, lastTrx: '27 Jun 2026' },
-  { id: 'PLG-003', name: 'Hendra Pratama', phone: '0811-2345-6789', address: 'Jl. Abepura, Jayapura', totalBeli: 2100000, piutang: 250000, lastTrx: '26 Jun 2026' },
-  { id: 'PLG-004', name: 'Budi Santoso', phone: '0822-1111-2222', address: 'Jl. Raya Depapre', totalBeli: 950000, piutang: 0, lastTrx: '25 Jun 2026' },
-  { id: 'PLG-005', name: 'Siti Rahma', phone: '0831-4444-5555', address: 'Jl. Ifar Gunung', totalBeli: 1450000, piutang: 0, lastTrx: '22 Jun 2026' },
-];
-
-const initSuppliers: Supplier[] = [
-  { id: 'PMS-001', name: 'PT Piaggio Distributor', contact: 'Bpk. Andi', phone: '0800-1234-5678', city: 'Jakarta', totalBeli: 12500000, hutang: 3500000, jatuhTempo: '26 Jul 2026' },
-  { id: 'PMS-002', name: 'UD Vespa Jaya', contact: 'Ibu Sari', phone: '0811-9876-5432', city: 'Makassar', totalBeli: 5800000, hutang: 850000, jatuhTempo: '15 Jul 2026' },
-  { id: 'PMS-003', name: 'CV Motor Parts', contact: 'Bpk. Rudi', phone: '0813-1111-2222', city: 'Surabaya', totalBeli: 3200000, hutang: 0, jatuhTempo: '-' },
-  { id: 'PMS-004', name: 'Toko Sparepart Sentani', contact: 'Bpk. Johan', phone: '0812-5555-6666', city: 'Sentani', totalBeli: 1500000, hutang: 0, jatuhTempo: '-' },
-];
-
-const initTransactions: Transaction[] = [
-  { id: 'TRX-0241', time: '14:22', date: '27 Jun 2026', customer: 'Rafi Maulana', customerId: 'PLG-001', items: [{ id: 'VS-001', name: 'Kampas Rem Depan', price: 120000, qty: 1 }, { id: 'VS-002', name: 'Oli Agip 4T 1 Liter', price: 90000, qty: 1 }], total: 210000, payMethod: 'Tunai', cashReceived: 250000, change: 40000, isPiutang: false },
-  { id: 'TRX-0240', time: '13:45', date: '27 Jun 2026', customer: 'Dian Kusuma', customerId: 'PLG-002', items: [{ id: 'VS-004', name: 'Kampas Rem Belakang', price: 110000, qty: 1 }], total: 110000, payMethod: 'QRIS', cashReceived: 0, change: 0, isPiutang: false },
-  { id: 'TRX-0239', time: '12:30', date: '26 Jun 2026', customer: '-', customerId: '', items: [{ id: 'VS-005', name: 'Busi NGK CR7HSA', price: 55000, qty: 1 }, { id: 'VS-008', name: 'Minyak Rem DOT4', price: 45000, qty: 1 }], total: 100000, payMethod: 'Tunai', cashReceived: 100000, change: 0, isPiutang: false },
-];
-
-const initStockEntries: StockEntry[] = [
-  { id: 'SM-001', date: '27 Jun 2026', supplier: 'PT Piaggio Distributor', supplierId: 'PMS-001', productId: 'VS-001', productName: 'Kampas Rem Depan', isNewProduct: false, qty: 50, pricePerUnit: 85000, ongkir: 0, total: 4250000, payStatus: 'Lunas' },
-  { id: 'SM-002', date: '25 Jun 2026', supplier: 'UD Vespa Jaya', supplierId: 'PMS-002', productId: 'VS-002', productName: 'Oli Agip 4T 1 Liter', isNewProduct: false, qty: 24, pricePerUnit: 65000, ongkir: 50000, total: 1610000, payStatus: 'Hutang' },
-  { id: 'SM-003', date: '22 Jun 2026', supplier: 'CV Motor Parts', supplierId: 'PMS-003', productId: 'VS-005', productName: 'Busi NGK CR7HSA', isNewProduct: false, qty: 30, pricePerUnit: 35000, ongkir: 25000, total: 1075000, payStatus: 'Lunas' },
-];
-
-const initCashFlow: CashEntry[] = [
-  { id: 'AK-001', date: '27 Jun 2026', desc: 'Penjualan - Rafi Maulana (TRX-0241)', type: 'Masuk', cat: 'Penjualan', amount: 210000, ref: 'TRX-0241' },
-  { id: 'AK-002', date: '27 Jun 2026', desc: 'Penjualan - Dian Kusuma (TRX-0240)', type: 'Masuk', cat: 'Penjualan', amount: 110000, ref: 'TRX-0240' },
-  { id: 'AK-003', date: '27 Jun 2026', desc: 'Beli stok - Kampas Rem Depan (SM-001)', type: 'Keluar', cat: 'Pembelian', amount: 4250000, ref: 'SM-001' },
-  { id: 'AK-004', date: '26 Jun 2026', desc: 'Penjualan umum (TRX-0239)', type: 'Masuk', cat: 'Penjualan', amount: 100000, ref: 'TRX-0239' },
-  { id: 'AK-005', date: '22 Jun 2026', desc: 'Beli stok - Busi NGK (SM-003)', type: 'Keluar', cat: 'Pembelian', amount: 1075000, ref: 'SM-003' },
-  { id: 'AK-006', date: '20 Jun 2026', desc: 'Bayar listrik toko', type: 'Keluar', cat: 'Operasional', amount: 250000, ref: '' },
-  { id: 'AK-007', date: '15 Jun 2026', desc: 'Gaji karyawan Jun 2026', type: 'Keluar', cat: 'Gaji', amount: 3000000, ref: '' },
-];
-
-// ===== CONTEXT =====
+// ===== CONTEXT TYPE =====
 type AppCtx = {
+  loading: boolean;
+  error: string | null;
   products: Product[];
   categories: string[];
   transactions: Transaction[];
@@ -92,200 +45,471 @@ type AppCtx = {
   customers: Customer[];
   suppliers: Supplier[];
   cashFlow: CashEntry[];
-
-  // Product actions
-  addProduct: (p: Omit<Product, 'img'> & { img: string }) => void;
+  addProduct: (p: Product) => void;
   updateProduct: (p: Product) => void;
   deleteProduct: (id: string) => void;
   setCategories: (cats: string[]) => void;
-
-  // Kasir actions
   processSale: (args: {
-    cart: CartItem[];
-    customer: string;
-    customerId: string;
-    payMethod: string;
-    cashReceived: number;
-    isPiutang: boolean;
+    cart: CartItem[]; customer: string; customerId: string;
+    payMethod: string; cashReceived: number; isPiutang: boolean;
   }) => Transaction;
-
-  // Stok Masuk actions
   receiveStock: (entry: Omit<StockEntry, 'id'>) => void;
-
-  // Piutang / Hutang actions
   payCustomerDebt: (customerId: string, amount: number) => void;
   paySupplierDebt: (supplierId: string, amount: number) => void;
-
-  // Manual cash entry
   addCashEntry: (e: Omit<CashEntry, 'id'>) => void;
-
-  // Customer / Supplier CRUD
   addCustomer: (c: Omit<Customer, 'id' | 'totalBeli' | 'piutang' | 'lastTrx'>) => void;
   addSupplier: (s: Omit<Supplier, 'id' | 'totalBeli' | 'hutang' | 'jatuhTempo'>) => void;
 };
 
 const AppContext = createContext<AppCtx | null>(null);
 
+// ===== MAPPER FUNCTIONS =====
+const mapProduct = (p: any): Product => ({
+  id: p.id, name: p.name, category: p.category || '',
+  stock: p.stock, min: p.min_stock, buy: p.buy_price, sell: p.sell_price, img: p.img_url || '',
+});
+const mapCustomer = (c: any): Customer => ({
+  id: c.id, name: c.name, phone: c.phone || '', address: c.address || '',
+  totalBeli: c.total_beli, piutang: c.piutang, lastTrx: c.last_trx || '-',
+});
+const mapSupplier = (s: any): Supplier => ({
+  id: s.id, name: s.name, contact: s.contact || '', phone: s.phone || '',
+  city: s.city || '', totalBeli: s.total_beli, hutang: s.hutang, jatuhTempo: s.jatuh_tempo || '-',
+});
+const mapTransaction = (t: any): Transaction => ({
+  id: t.id, time: t.time, date: t.date,
+  customer: t.customer_name, customerId: t.customer_id,
+  items: (t.transaction_items || []).map((i: any) => ({
+    id: i.product_id, name: i.product_name, price: i.price, qty: i.qty,
+  })),
+  total: t.total, payMethod: t.pay_method,
+  cashReceived: t.cash_received, change: t.change_amount, isPiutang: t.is_piutang,
+});
+const mapStockEntry = (s: any): StockEntry => ({
+  id: s.id, date: s.date, supplier: s.supplier, supplierId: s.supplier_id,
+  productId: s.product_id, productName: s.product_name,
+  isNewProduct: s.is_new_product, qty: s.qty, pricePerUnit: s.price_per_unit,
+  ongkir: s.ongkir, total: s.total, payStatus: s.pay_status,
+});
+const mapCashEntry = (c: any): CashEntry => ({
+  id: c.id, date: c.date, desc: c.description,
+  type: c.type, cat: c.category, amount: c.amount, ref: c.ref || '',
+});
+
+// ===== PROVIDER =====
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(initProducts);
-  const [categories, setCategories] = useState<string[]>(['Rem', 'Oli', 'Ban', 'Elektrikal', 'Filter', 'Transmisi', 'Bearing', 'Body', 'Kelistrikan']);
-  const [transactions, setTransactions] = useState<Transaction[]>(initTransactions);
-  const [stockEntries, setStockEntries] = useState<StockEntry[]>(initStockEntries);
-  const [customers, setCustomers] = useState<Customer[]>(initCustomers);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(initSuppliers);
-  const [cashFlow, setCashFlow] = useState<CashEntry[]>(initCashFlow);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategoriesState] = useState<string[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [cashFlow, setCashFlow] = useState<CashEntry[]>([]);
 
   const nowDate = () => new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   const nowTime = () => new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-  const addProduct = (p: Product) => setProducts(prev => [p, ...prev]);
-  const updateProduct = (p: Product) => setProducts(prev => prev.map(x => x.id === p.id ? p : x));
-  const deleteProduct = (id: string) => setProducts(prev => prev.filter(x => x.id !== id));
+  useEffect(() => { loadAll(); }, []);
 
+  const loadAll = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [r1, r2, r3, r4, r5, r6, r7] = await Promise.all([
+        supabase.from('products').select('*').order('created_at'),
+        supabase.from('categories').select('name').order('name'),
+        supabase.from('customers').select('*').order('created_at'),
+        supabase.from('suppliers').select('*').order('created_at'),
+        supabase.from('transactions').select('*, transaction_items(*)').order('created_at', { ascending: false }),
+        supabase.from('stock_entries').select('*').order('created_at', { ascending: false }),
+        supabase.from('cash_flow').select('*').order('created_at', { ascending: false }),
+      ]);
+
+      const firstErr = [r1, r2, r3, r4, r5, r6, r7].find(r => r.error)?.error;
+      if (firstErr) throw firstErr;
+
+      setProducts((r1.data || []).map(mapProduct));
+      setCategoriesState((r2.data || []).map((c: any) => c.name));
+      setCustomers((r3.data || []).map(mapCustomer));
+      setSuppliers((r4.data || []).map(mapSupplier));
+      setTransactions((r5.data || []).map(mapTransaction));
+      setStockEntries((r6.data || []).map(mapStockEntry));
+      setCashFlow((r7.data || []).map(mapCashEntry));
+    } catch (err: any) {
+      setError(err?.message || 'Gagal terhubung ke database. Pastikan SQL sudah dijalankan di Supabase.');
+    }
+    setLoading(false);
+  };
+
+  // ===== PRODUCT ACTIONS =====
+  const addProduct = (p: Product) => {
+    setProducts(prev => [p, ...prev]);
+    supabase.from('products').insert({
+      id: p.id, name: p.name, category: p.category,
+      stock: p.stock, min_stock: p.min, buy_price: p.buy, sell_price: p.sell, img_url: p.img,
+    }).then(({ error: e }) => e && console.error('addProduct:', e));
+  };
+
+  const updateProduct = (p: Product) => {
+    setProducts(prev => prev.map(x => x.id === p.id ? p : x));
+    supabase.from('products').update({
+      name: p.name, category: p.category,
+      stock: p.stock, min_stock: p.min, buy_price: p.buy, sell_price: p.sell, img_url: p.img,
+    }).eq('id', p.id).then(({ error: e }) => e && console.error('updateProduct:', e));
+  };
+
+  const deleteProduct = (id: string) => {
+    setProducts(prev => prev.filter(x => x.id !== id));
+    supabase.from('products').delete().eq('id', id)
+      .then(({ error: e }) => e && console.error('deleteProduct:', e));
+  };
+
+  const setCategories = (cats: string[]) => {
+    setCategoriesState(cats);
+    supabase.from('categories').delete().gte('id', 1).then(() => {
+      if (cats.length > 0) {
+        supabase.from('categories').insert(cats.map(name => ({ name })))
+          .then(({ error: e }) => e && console.error('setCategories:', e));
+      }
+    });
+  };
+
+  // ===== KASIR =====
   const processSale = (args: {
     cart: CartItem[]; customer: string; customerId: string;
     payMethod: string; cashReceived: number; isPiutang: boolean;
   }): Transaction => {
     const { cart, customer, customerId, payMethod, cashReceived, isPiutang } = args;
     const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+    const txId = `TRX-${Date.now().toString().slice(-6)}`;
+    const date = nowDate();
+    const time = nowTime();
 
-    // 1. Kurangi stok
-    setProducts(prev => prev.map(p => {
-      const item = cart.find(c => c.id === p.id);
-      return item ? { ...p, stock: Math.max(0, p.stock - item.qty) } : p;
-    }));
-
-    // 2. Buat transaksi
-    const txId = `TRX-${String(Date.now()).slice(-4)}`;
     const tx: Transaction = {
-      id: txId, time: nowTime(), date: nowDate(),
+      id: txId, time, date,
       customer: customer || '-', customerId,
       items: [...cart], total,
       payMethod, cashReceived,
       change: payMethod === 'Tunai' ? cashReceived - total : 0,
       isPiutang,
     };
-    setTransactions(prev => [tx, ...prev]);
 
-    // 3. Arus kas atau piutang
+    // Capture current state BEFORE optimistic updates (for Supabase writes)
+    const snapProducts = products;
+    const snapCustomers = customers;
+
+    // Optimistic: update transactions + product stock
+    setTransactions(prev => [tx, ...prev]);
+    setProducts(prev => prev.map(p => {
+      const item = cart.find(c => c.id === p.id);
+      return item ? { ...p, stock: Math.max(0, p.stock - item.qty) } : p;
+    }));
+
     if (isPiutang && customerId) {
-      // Tambah piutang pelanggan
       setCustomers(prev => prev.map(c =>
-        c.id === customerId ? { ...c, piutang: c.piutang + total, totalBeli: c.totalBeli + total, lastTrx: nowDate() } : c
+        c.id === customerId
+          ? { ...c, piutang: c.piutang + total, totalBeli: c.totalBeli + total, lastTrx: date }
+          : c
       ));
     } else {
-      // Catat ke arus kas
-      const ck: CashEntry = {
-        id: `AK-${txId}`, date: nowDate(),
+      setCashFlow(prev => [{
+        id: `AK-${txId}`, date,
         desc: `Penjualan - ${customer || 'Umum'} (${txId})`,
         type: 'Masuk', cat: 'Penjualan', amount: total, ref: txId,
-      };
-      setCashFlow(prev => [ck, ...prev]);
-
-      // Update total beli pelanggan
+      }, ...prev]);
       if (customerId) {
         setCustomers(prev => prev.map(c =>
-          c.id === customerId ? { ...c, totalBeli: c.totalBeli + total, lastTrx: nowDate() } : c
+          c.id === customerId ? { ...c, totalBeli: c.totalBeli + total, lastTrx: date } : c
         ));
       }
     }
 
+    // Background: write to Supabase
+    (async () => {
+      const { error: txErr } = await supabase.from('transactions').insert({
+        id: txId, time, date,
+        customer_name: customer || '-', customer_id: customerId,
+        total, pay_method: payMethod, cash_received: cashReceived,
+        change_amount: payMethod === 'Tunai' ? cashReceived - total : 0,
+        is_piutang: isPiutang,
+      });
+      if (txErr) { console.error('processSale tx:', txErr); return; }
+
+      if (cart.length > 0) {
+        await supabase.from('transaction_items').insert(
+          cart.map(item => ({
+            transaction_id: txId, product_id: item.id,
+            product_name: item.name, price: item.price, qty: item.qty,
+          }))
+        );
+      }
+
+      for (const item of cart) {
+        const prod = snapProducts.find(p => p.id === item.id);
+        if (prod) {
+          await supabase.from('products')
+            .update({ stock: Math.max(0, prod.stock - item.qty) })
+            .eq('id', item.id);
+        }
+      }
+
+      if (isPiutang && customerId) {
+        const cust = snapCustomers.find(c => c.id === customerId);
+        if (cust) {
+          await supabase.from('customers').update({
+            piutang: cust.piutang + total,
+            total_beli: cust.totalBeli + total,
+            last_trx: date,
+          }).eq('id', customerId);
+        }
+      } else {
+        await supabase.from('cash_flow').insert({
+          id: `AK-${txId}`, date,
+          description: `Penjualan - ${customer || 'Umum'} (${txId})`,
+          type: 'Masuk', category: 'Penjualan', amount: total, ref: txId,
+        });
+        if (customerId) {
+          const cust = snapCustomers.find(c => c.id === customerId);
+          if (cust) {
+            await supabase.from('customers').update({
+              total_beli: cust.totalBeli + total, last_trx: date,
+            }).eq('id', customerId);
+          }
+        }
+      }
+    })();
+
     return tx;
   };
 
+  // ===== STOK MASUK =====
   const receiveStock = (entry: Omit<StockEntry, 'id'>) => {
-    const smId = `SM-${String(Date.now()).slice(-4)}`;
+    const smId = `SM-${Date.now().toString().slice(-6)}`;
+    const fullEntry: StockEntry = { ...entry, id: smId };
 
-    // 1. Tambah atau update stok produk
+    const snapProducts = products;
+    const snapSuppliers = suppliers;
+
+    setStockEntries(prev => [fullEntry, ...prev]);
     setProducts(prev => {
       const exists = prev.find(p => p.id === entry.productId);
       if (exists) {
         return prev.map(p => p.id === entry.productId ? { ...p, stock: p.stock + entry.qty } : p);
       } else if (entry.isNewProduct) {
-        // Produk baru: tambah ke inventori
-        const newP: Product = {
+        return [{
           id: entry.productId, name: entry.productName, category: 'Lainnya',
           stock: entry.qty, min: 5, buy: entry.pricePerUnit,
           sell: Math.round(entry.pricePerUnit * 1.35), img: '',
-        };
-        return [newP, ...prev];
+        }, ...prev];
       }
       return prev;
     });
 
-    // 2. Simpan record stok masuk
-    const fullEntry: StockEntry = { ...entry, id: smId };
-    setStockEntries(prev => [fullEntry, ...prev]);
-
-    // 3. Hutang pemasok atau arus kas
     if (entry.payStatus === 'Hutang' && entry.supplierId) {
       setSuppliers(prev => prev.map(s =>
-        s.id === entry.supplierId ? { ...s, hutang: s.hutang + entry.total, totalBeli: s.totalBeli + entry.total, jatuhTempo: '30 hari dari sekarang' } : s
+        s.id === entry.supplierId
+          ? { ...s, hutang: s.hutang + entry.total, totalBeli: s.totalBeli + entry.total, jatuhTempo: '30 hari dari sekarang' }
+          : s
       ));
     } else {
-      // Lunas → catat keluar
-      const ck: CashEntry = {
-        id: `AK-${smId}`, date: nowDate(),
+      setCashFlow(prev => [{
+        id: `AK-${smId}`, date: entry.date,
         desc: `Beli stok - ${entry.productName} (${smId})`,
         type: 'Keluar', cat: 'Pembelian', amount: entry.total, ref: smId,
-      };
-      setCashFlow(prev => [ck, ...prev]);
-
-      // Update total beli supplier
+      }, ...prev]);
       if (entry.supplierId) {
         setSuppliers(prev => prev.map(s =>
           s.id === entry.supplierId ? { ...s, totalBeli: s.totalBeli + entry.total } : s
         ));
       }
     }
+
+    (async () => {
+      await supabase.from('stock_entries').insert({
+        id: smId, date: entry.date, supplier: entry.supplier, supplier_id: entry.supplierId,
+        product_id: entry.productId, product_name: entry.productName,
+        is_new_product: entry.isNewProduct, qty: entry.qty,
+        price_per_unit: entry.pricePerUnit, ongkir: entry.ongkir,
+        total: entry.total, pay_status: entry.payStatus,
+      });
+
+      const existingProd = snapProducts.find(p => p.id === entry.productId);
+      if (existingProd) {
+        await supabase.from('products')
+          .update({ stock: existingProd.stock + entry.qty })
+          .eq('id', entry.productId);
+      } else if (entry.isNewProduct) {
+        await supabase.from('products').insert({
+          id: entry.productId, name: entry.productName, category: 'Lainnya',
+          stock: entry.qty, min_stock: 5, buy_price: entry.pricePerUnit,
+          sell_price: Math.round(entry.pricePerUnit * 1.35), img_url: '',
+        });
+      }
+
+      if (entry.payStatus === 'Hutang' && entry.supplierId) {
+        const supp = snapSuppliers.find(s => s.id === entry.supplierId);
+        if (supp) {
+          await supabase.from('suppliers').update({
+            hutang: supp.hutang + entry.total,
+            total_beli: supp.totalBeli + entry.total,
+            jatuh_tempo: '30 hari dari sekarang',
+          }).eq('id', entry.supplierId);
+        }
+      } else {
+        await supabase.from('cash_flow').insert({
+          id: `AK-${smId}`, date: entry.date,
+          description: `Beli stok - ${entry.productName} (${smId})`,
+          type: 'Keluar', category: 'Pembelian', amount: entry.total, ref: smId,
+        });
+        if (entry.supplierId) {
+          const supp = snapSuppliers.find(s => s.id === entry.supplierId);
+          if (supp) {
+            await supabase.from('suppliers').update({
+              total_beli: supp.totalBeli + entry.total,
+            }).eq('id', entry.supplierId);
+          }
+        }
+      }
+    })();
   };
 
+  // ===== PIUTANG =====
   const payCustomerDebt = (customerId: string, amount: number) => {
+    const cust = customers.find(c => c.id === customerId);
+    const date = nowDate();
+    const entryId = `AK-${Date.now()}`;
+    const custName = cust?.name || customerId;
+    const newPiutang = Math.max(0, (cust?.piutang || 0) - amount);
+
     setCustomers(prev => prev.map(c =>
-      c.id === customerId ? { ...c, piutang: Math.max(0, c.piutang - amount) } : c
+      c.id === customerId ? { ...c, piutang: newPiutang } : c
     ));
-    const ck: CashEntry = {
-      id: `AK-${Date.now()}`, date: nowDate(),
-      desc: `Piutang diterima - ${customers.find(c => c.id === customerId)?.name || customerId}`,
+    setCashFlow(prev => [{
+      id: entryId, date,
+      desc: `Piutang diterima - ${custName}`,
       type: 'Masuk', cat: 'Piutang Diterima', amount, ref: customerId,
-    };
-    setCashFlow(prev => [ck, ...prev]);
+    }, ...prev]);
+
+    (async () => {
+      await supabase.from('customers').update({ piutang: newPiutang }).eq('id', customerId);
+      await supabase.from('cash_flow').insert({
+        id: entryId, date, description: `Piutang diterima - ${custName}`,
+        type: 'Masuk', category: 'Piutang Diterima', amount, ref: customerId,
+      });
+    })();
   };
 
+  // ===== HUTANG =====
   const paySupplierDebt = (supplierId: string, amount: number) => {
+    const supp = suppliers.find(s => s.id === supplierId);
+    const date = nowDate();
+    const entryId = `AK-${Date.now()}`;
+    const suppName = supp?.name || supplierId;
+    const newHutang = Math.max(0, (supp?.hutang || 0) - amount);
+
     setSuppliers(prev => prev.map(s =>
-      s.id === supplierId ? { ...s, hutang: Math.max(0, s.hutang - amount), jatuhTempo: Math.max(0, (s.hutang - amount)) === 0 ? '-' : s.jatuhTempo } : s
+      s.id === supplierId
+        ? { ...s, hutang: newHutang, jatuhTempo: newHutang === 0 ? '-' : s.jatuhTempo }
+        : s
     ));
-    const ck: CashEntry = {
-      id: `AK-${Date.now()}`, date: nowDate(),
-      desc: `Bayar hutang - ${suppliers.find(s => s.id === supplierId)?.name || supplierId}`,
+    setCashFlow(prev => [{
+      id: entryId, date,
+      desc: `Bayar hutang - ${suppName}`,
       type: 'Keluar', cat: 'Hutang Dibayar', amount, ref: supplierId,
-    };
-    setCashFlow(prev => [ck, ...prev]);
+    }, ...prev]);
+
+    (async () => {
+      await supabase.from('suppliers').update({
+        hutang: newHutang,
+        jatuh_tempo: newHutang === 0 ? '-' : (supp?.jatuhTempo || '-'),
+      }).eq('id', supplierId);
+      await supabase.from('cash_flow').insert({
+        id: entryId, date, description: `Bayar hutang - ${suppName}`,
+        type: 'Keluar', category: 'Hutang Dibayar', amount, ref: supplierId,
+      });
+    })();
   };
 
+  // ===== ARUS KAS MANUAL =====
   const addCashEntry = (e: Omit<CashEntry, 'id'>) => {
-    setCashFlow(prev => [{ ...e, id: `AK-${Date.now()}` }, ...prev]);
+    const id = `AK-${Date.now()}`;
+    setCashFlow(prev => [{ ...e, id }, ...prev]);
+    supabase.from('cash_flow').insert({
+      id, date: e.date, description: e.desc, type: e.type,
+      category: e.cat, amount: e.amount, ref: e.ref || '',
+    }).then(({ error: err }) => err && console.error('addCashEntry:', err));
   };
 
+  // ===== PELANGGAN =====
   const addCustomer = (c: Omit<Customer, 'id' | 'totalBeli' | 'piutang' | 'lastTrx'>) => {
-    const id = `PLG-${String(customers.length + 1).padStart(3, '0')}`;
-    setCustomers(prev => [...prev, { ...c, id, totalBeli: 0, piutang: 0, lastTrx: '-' }]);
+    const id = `PLG-${Date.now().toString().slice(-6)}`;
+    const newCust: Customer = { ...c, id, totalBeli: 0, piutang: 0, lastTrx: '-' };
+    setCustomers(prev => [...prev, newCust]);
+    supabase.from('customers').insert({
+      id, name: c.name, phone: c.phone, address: c.address,
+      total_beli: 0, piutang: 0, last_trx: '-',
+    }).then(({ error: e }) => e && console.error('addCustomer:', e));
   };
 
+  // ===== PEMASOK =====
   const addSupplier = (s: Omit<Supplier, 'id' | 'totalBeli' | 'hutang' | 'jatuhTempo'>) => {
-    const id = `PMS-${String(suppliers.length + 1).padStart(3, '0')}`;
-    setSuppliers(prev => [...prev, { ...s, id, totalBeli: 0, hutang: 0, jatuhTempo: '-' }]);
+    const id = `PMS-${Date.now().toString().slice(-6)}`;
+    const newSupp: Supplier = { ...s, id, totalBeli: 0, hutang: 0, jatuhTempo: '-' };
+    setSuppliers(prev => [...prev, newSupp]);
+    supabase.from('suppliers').insert({
+      id, name: s.name, contact: s.contact, phone: s.phone, city: s.city,
+      total_beli: 0, hutang: 0, jatuh_tempo: '-',
+    }).then(({ error: e }) => e && console.error('addSupplier:', e));
   };
 
   return (
     <AppContext.Provider value={{
+      loading, error,
       products, categories, transactions, stockEntries, customers, suppliers, cashFlow,
       addProduct, updateProduct, deleteProduct, setCategories,
       processSale, receiveStock,
       payCustomerDebt, paySupplierDebt,
       addCashEntry, addCustomer, addSupplier,
     }}>
+      {/* Loading overlay */}
+      {loading && (
+        <div style={{
+          position: 'fixed', inset: 0, background: '#0f1117', zIndex: 9999,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px',
+        }}>
+          <div style={{
+            width: '52px', height: '52px', borderRadius: '50%',
+            border: '5px solid #2a2d3e', borderTopColor: '#f97316',
+            animation: 'kspin 0.7s linear infinite',
+          }} />
+          <div>
+            <div style={{ color: '#f0f2f5', fontSize: '18px', fontWeight: 700, textAlign: 'center' }}>Klinik Vespa</div>
+            <div style={{ color: '#8b92a5', fontSize: '13px', textAlign: 'center', marginTop: '6px' }}>Memuat data dari database...</div>
+          </div>
+          <style>{`@keyframes kspin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {/* Error banner */}
+      {!loading && error && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9998,
+          background: '#450a0a', borderBottom: '2px solid #ef4444',
+          padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ color: '#ef4444', fontWeight: 700, fontSize: '14px' }}>⚠️ Gagal Terhubung ke Database</div>
+            <div style={{ color: '#fca5a5', fontSize: '12px', marginTop: '2px' }}>{error}</div>
+          </div>
+          <button onClick={loadAll} style={{
+            padding: '8px 18px', borderRadius: '8px', background: '#ef4444',
+            color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+          }}>Coba Lagi</button>
+        </div>
+      )}
+
       {children}
     </AppContext.Provider>
   );
